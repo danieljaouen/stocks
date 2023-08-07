@@ -9,7 +9,8 @@ Mix.install(
     {:kino_vega_lite, "~> 0.1.9"},
     {:kino_explorer, "~> 0.1.8"},
     {:exla, "~> 0.5.3"},
-    {:axon, "~> 0.5.1"}
+    {:axon, "~> 0.5.1"},
+    {:exgboost, "~> 0.3.0"}
   ],
   config: [nx: [default_backend: EXLA.Backend]]
 )
@@ -138,10 +139,17 @@ slice_fun = fn df ->
       end
     )
 
+  x = Enum.into(x, <<>>, fn df -> Nx.to_binary(df) end)
+  x = Nx.from_binary(x, :f64)
+
   y =
     for i <- prediction_days..(elem(DF.shape(df), 0) - 1) do
-      Explorer.Series.to_tensor(DF.slice(df, [i])["percent_change"])[0]
+      Explorer.Series.to_tensor(DF.slice(df, [i])["percent_change"])
     end
+
+  num_days = length(y)
+  x = Nx.reshape(x, {num_days, prediction_days, 3})
+  y = Nx.concatenate(y)
 
   [x, y]
 end
@@ -161,18 +169,39 @@ require Explorer.DataFrame, as: DF
 test_num = String.to_integer(Kino.Input.read(test_num_text))
 
 train_test_split_fun = fn x_tensors, y_tensors ->
-  [x_train, x_test] = [
-    Enum.slice(x_tensors, 0..-test_num//1),
-    Enum.slice(x_tensors, -test_num..-1)
+  #  [x_train, x_test] = [Nx.slice(x_tensors, 0..-test_num//1), Nx.slice(x_tensors, -test_num..-1)]
+  #  [y_train, y_test] = [Nx.slice(y_tensors, 0..-test_num//1), Nx.slice(y_tensors, -test_num..-1)]
+  train_length = elem(Nx.shape(x_tensors), 0) - test_num
+
+  if train_length < 0 do
+    IO.puts(Nx.shape(x_tensors))
+  end
+
+  [x_train, y_train] = [
+    Nx.slice(x_tensors, [0, 0, 0], [train_length, prediction_days, 3]),
+    Nx.slice(y_tensors, [0], [train_length])
   ]
 
-  [y_train, y_test] = [
-    Enum.slice(y_tensors, 0..-test_num//1),
-    Enum.slice(y_tensors, -test_num..-1)
+  [x_test, y_test] = [
+    Nx.slice(x_tensors, [train_length, 0, 0], [test_num, prediction_days, 3]),
+    Nx.slice(y_tensors, [train_length], [test_num])
   ]
 
   [[x_train, y_train], [x_test, y_test]]
 end
 
-train_test_split = Enum.map(sliced_frames, fn [x, y] -> train_test_split_fun.(x, y) end)
+train_test_split =
+  sliced_frames
+  |> Enum.filter(fn [x_tensor, _] -> elem(Nx.shape(x_tensor), 0) > test_num end)
+  |> Enum.map(fn [x, y] -> train_test_split_fun.(x, y) end)
+```
+
+## Try EXGBoost
+
+```elixir
+[[first_item_train_x, first_item_train_y], [first_item_test_x, first_item_test_y]] =
+  train_test_split |> Enum.at(0)
+
+# EXGBoost.train(first_item_train_x, first_item_train_y)
+first_item_train_x
 ```
