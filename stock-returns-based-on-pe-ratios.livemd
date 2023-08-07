@@ -1,0 +1,63 @@
+# Stock Returns Based On PE Ratios
+
+```elixir
+Mix.install(
+  [
+    {:nx, "~> 0.5.3"},
+    {:explorer, "~> 0.6.1"},
+    {:kino, "~> 0.10.0"},
+    {:kino_vega_lite, "~> 0.1.9"},
+    {:kino_explorer, "~> 0.1.8"},
+    {:exla, "~> 0.5.3"},
+    {:axon, "~> 0.5.1"}
+  ],
+  config: [nx: [default_backend: EXLA.Backend]]
+)
+```
+
+## Read In The CSVs
+
+```elixir
+require Explorer.DataFrame, as: DF
+
+paths =
+  "~/Dropbox/stocks/*.csv"
+  |> Path.expand()
+  |> Path.wildcard()
+
+dates =
+  Enum.map(paths, fn path ->
+    Code.eval_quoted(
+      quote do
+        Date.new(
+          unquote_splicing(
+            Enum.map(String.split(Path.basename(path, ".csv"), "-"), &String.to_integer/1)
+          )
+        )
+      end
+    )
+  end)
+
+dates = Enum.map(dates, fn date -> elem(elem(date, 0), 1) end)
+dataframes = Enum.map(paths, fn path -> Explorer.DataFrame.from_csv!(path, header: false) end)
+
+dataframes =
+  Enum.map(dataframes, fn df -> Explorer.DataFrame.rename(df, ["ticker", "price", "pe_ratio"]) end)
+
+date_lists =
+  Enum.with_index(dataframes, fn df, i ->
+    fn -> Enum.at(dates, i) end
+    |> Stream.repeatedly()
+    |> Enum.take(Explorer.Series.count(df["ticker"]))
+  end)
+
+date_series = Enum.map(date_lists, fn date_list -> Explorer.DataFrame.new(date: date_list) end)
+
+dataframes =
+  Enum.with_index(dataframes, fn df, i -> DF.concat_columns(df, Enum.at(date_series, i)) end)
+
+dataframes =
+  Enum.map(dataframes, fn df ->
+    DF.mutate(df, %{ticker: cast(ticker, :category), date: cast(date, :date)})
+  end)
+```
