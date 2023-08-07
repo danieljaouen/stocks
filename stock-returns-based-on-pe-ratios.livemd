@@ -123,6 +123,21 @@ slice_fun = fn df ->
       |> DF.slice((i - prediction_days)..(i - 1))
     end
 
+  x =
+    Enum.map(
+      x,
+      fn df ->
+        Nx.concatenate(
+          [
+            Nx.reshape(Explorer.Series.to_tensor(df["price"]), {:auto, 1}),
+            Nx.reshape(Explorer.Series.to_tensor(df["pe_ratio"]), {:auto, 1}),
+            Nx.reshape(Explorer.Series.to_tensor(df["percent_change"]), {:auto, 1})
+          ],
+          axis: 1
+        )
+      end
+    )
+
   y =
     for i <- prediction_days..(elem(DF.shape(df), 0) - 1) do
       Explorer.Series.to_tensor(DF.slice(df, [i])["percent_change"])[0]
