@@ -119,6 +119,7 @@ slice_fun = fn df ->
   x =
     for i <- prediction_days..(elem(DF.shape(df), 0) - 1) do
       df
+      |> DF.select(["price", "pe_ratio", "percent_change"])
       |> DF.slice((i - prediction_days)..(i - 1))
     end
 
@@ -131,4 +132,32 @@ slice_fun = fn df ->
 end
 
 sliced_frames = Enum.map(ticker_dfs_with_percentages, fn df -> slice_fun.(df) end)
+```
+
+## Train/Test Split
+
+```elixir
+test_num_text = Kino.Input.text("Number of Test Cases")
+```
+
+```elixir
+require Explorer.DataFrame, as: DF
+
+test_num = String.to_integer(Kino.Input.read(test_num_text))
+
+train_test_split_fun = fn x_tensors, y_tensors ->
+  [x_train, x_test] = [
+    Enum.slice(x_tensors, 0..-test_num//1),
+    Enum.slice(x_tensors, -test_num..-1)
+  ]
+
+  [y_train, y_test] = [
+    Enum.slice(y_tensors, 0..-test_num//1),
+    Enum.slice(y_tensors, -test_num..-1)
+  ]
+
+  [[x_train, y_train], [x_test, y_test]]
+end
+
+train_test_split = Enum.map(sliced_frames, fn [x, y] -> train_test_split_fun.(x, y) end)
 ```
