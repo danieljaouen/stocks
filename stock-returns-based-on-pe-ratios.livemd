@@ -70,3 +70,19 @@ require Explorer.DataFrame, as: DF
 total_df = DF.concat_rows(dataframes)
 total_df = DF.mutate(total_df, %{ticker: cast(ticker, :category)})
 ```
+
+## Sort By Ticker
+
+```elixir
+require Explorer.DataFrame, as: DF
+
+tickers = Explorer.Series.categories(total_df["ticker"])
+total_df = DF.mutate(total_df, %{ticker: cast(ticker, :string)})
+
+ticker_dfs =
+  Enum.map(Explorer.Series.to_list(tickers), fn ticker ->
+    DF.filter(total_df, ticker == ^ticker)
+  end)
+
+length(ticker_dfs)
+```
