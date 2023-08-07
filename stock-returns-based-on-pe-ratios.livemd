@@ -154,7 +154,7 @@ slice_fun = fn df ->
   [x, y]
 end
 
-sliced_frames = Enum.map(ticker_dfs_with_percentages, fn df -> slice_fun.(df) end)
+sliced_frames = Enum.map(ticker_dfs_with_percentages, fn df -> [df["ticker"], slice_fun.(df)] end)
 ```
 
 ## Train/Test Split
@@ -169,8 +169,6 @@ require Explorer.DataFrame, as: DF
 test_num = String.to_integer(Kino.Input.read(test_num_text))
 
 train_test_split_fun = fn x_tensors, y_tensors ->
-  #  [x_train, x_test] = [Nx.slice(x_tensors, 0..-test_num//1), Nx.slice(x_tensors, -test_num..-1)]
-  #  [y_train, y_test] = [Nx.slice(y_tensors, 0..-test_num//1), Nx.slice(y_tensors, -test_num..-1)]
   train_length = elem(Nx.shape(x_tensors), 0) - test_num
 
   if train_length < 0 do
@@ -192,16 +190,16 @@ end
 
 train_test_split =
   sliced_frames
-  |> Enum.filter(fn [x_tensor, _] -> elem(Nx.shape(x_tensor), 0) > test_num end)
-  |> Enum.map(fn [x, y] -> train_test_split_fun.(x, y) end)
+  |> Enum.filter(fn [_, [x_tensor, _]] -> elem(Nx.shape(x_tensor), 0) > test_num end)
+  |> Enum.map(fn [tickers, [x, y]] -> [tickers[0], train_test_split_fun.(x, y)] end)
 ```
 
 ## Try EXGBoost
 
 ```elixir
-[[first_item_train_x, first_item_train_y], [first_item_test_x, first_item_test_y]] =
+[ticker, [[first_item_train_x, first_item_train_y], [first_item_test_x, first_item_test_y]]] =
   train_test_split |> Enum.at(0)
 
 # EXGBoost.train(first_item_train_x, first_item_train_y)
-first_item_train_x
+[ticker, first_item_train_x]
 ```
