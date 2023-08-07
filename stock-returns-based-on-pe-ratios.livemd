@@ -105,3 +105,30 @@ ticker_dfs_with_percentages =
 # drop the first row
 ticker_dfs_with_percentages = Enum.map(ticker_dfs_with_percentages, fn df -> DF.drop_nil(df) end)
 ```
+
+## Shape The Data
+
+```elixir
+prediction_days_text = Kino.Input.text("Num Prediction Days")
+```
+
+```elixir
+prediction_days = String.to_integer(Kino.Input.read(prediction_days_text))
+
+slice_fun = fn df ->
+  x =
+    for i <- prediction_days..(elem(DF.shape(df), 0) - 1) do
+      df
+      |> DF.slice((i - prediction_days)..(i - 1))
+    end
+
+  y =
+    for i <- prediction_days..(elem(DF.shape(df), 0) - 1) do
+      Explorer.Series.to_tensor(DF.slice(df, [i])["percent_change"])[0]
+    end
+
+  [x, y]
+end
+
+sliced_frames = Enum.map(ticker_dfs_with_percentages, fn df -> slice_fun.(df) end)
+```
