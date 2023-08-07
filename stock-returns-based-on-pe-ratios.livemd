@@ -9,8 +9,7 @@ Mix.install(
     {:kino_vega_lite, "~> 0.1.9"},
     {:kino_explorer, "~> 0.1.8"},
     {:exla, "~> 0.5.3"},
-    {:axon, "~> 0.5.1"},
-    {:exgboost, "~> 0.3.0"}
+    {:axon, "~> 0.5.1"}
   ],
   config: [nx: [default_backend: EXLA.Backend]]
 )
@@ -202,7 +201,19 @@ train_test_split =
 
 batch_size = 32
 
-input = Axon.input("input", shape: {nil, batch_size, prediction_days, 3})
+build_model = fn ->
+  input = Axon.input("predictors", shape: {nil, prediction_days, 3})
+
+  model =
+    input
+    |> Axon.flatten()
+    |> Axon.dense(128, activation: :relu)
+    |> Axon.batch_norm()
+    |> Axon.dropout(rate: 0.8)
+    |> Axon.dense(64)
+    |> Axon.tanh()
+    |> Axon.dense(1)
+end
 ```
 
 ## Batch The Data
@@ -220,6 +231,13 @@ batched_y_train =
 ## Train The Model And Run It
 
 ```elixir
+model = build_model.()
+IO.puts(Axon.Display.as_table(model, Nx.template({batch_size, prediction_days, 3}, :f64)))
+```
+
+```elixir
+model = build_model.()
+
 params =
   model
   |> Axon.Loop.trainer(:mean_squared_error, :adam)
