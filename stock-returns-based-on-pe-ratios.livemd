@@ -194,12 +194,35 @@ train_test_split =
   |> Enum.map(fn [tickers, [x, y]] -> [tickers[0], train_test_split_fun.(x, y)] end)
 ```
 
-## Try EXGBoost
+## Build The Model
 
 ```elixir
-[ticker, [[first_item_train_x, first_item_train_y], [first_item_test_x, first_item_test_y]]] =
+[ticker, [[first_item_x_train, first_item_y_train], [first_item_x_test, first_item_y_test]]] =
   train_test_split |> Enum.at(0)
 
-# EXGBoost.train(first_item_train_x, first_item_train_y)
-[ticker, first_item_train_x]
+batch_size = 32
+
+input = Axon.input("input", shape: {nil, batch_size, prediction_days, 3})
+```
+
+## Batch The Data
+
+```elixir
+batched_x_train =
+  first_item_x_train
+  |> Nx.to_batched(batch_size, leftover: :discard)
+
+batched_y_train =
+  first_item_y_train
+  |> Nx.to_batched(batch_size, leftover: :discard)
+```
+
+## Train The Model And Run It
+
+```elixir
+params =
+  model
+  |> Axon.Loop.trainer(:mean_squared_error, :adam)
+  |> Axon.Loop.metric(:mean_absolute_error, "MAE")
+  |> Axon.Loop.run(Stream.zip(batched_x_train, batched_y_train), %{}, epochs: 25, compiler: EXLA)
 ```
