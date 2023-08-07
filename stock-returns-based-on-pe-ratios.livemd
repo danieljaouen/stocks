@@ -58,6 +58,15 @@ dataframes =
 
 dataframes =
   Enum.map(dataframes, fn df ->
-    DF.mutate(df, %{ticker: cast(ticker, :category), date: cast(date, :date)})
+    DF.mutate(df, %{date: cast(date, :date)})
   end)
+```
+
+## Concat The Rows
+
+```elixir
+require Explorer.DataFrame, as: DF
+
+total_df = DF.concat_rows(dataframes)
+total_df = DF.mutate(total_df, %{ticker: cast(ticker, :category)})
 ```
