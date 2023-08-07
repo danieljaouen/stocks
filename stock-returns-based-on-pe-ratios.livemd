@@ -86,3 +86,22 @@ ticker_dfs =
 
 length(ticker_dfs)
 ```
+
+## Shift By 1 And Take Percent Change
+
+```elixir
+require Explorer.DataFrame, as: DF
+
+shifted_ticker_dfs =
+  Enum.map(ticker_dfs, fn df ->
+    DF.mutate(df, %{price_shifted: Explorer.Series.shift(price, 1)})
+  end)
+
+ticker_dfs_with_percentages =
+  Enum.map(shifted_ticker_dfs, fn df ->
+    DF.mutate(df, %{percent_change: (price - price_shifted) / price_shifted})
+  end)
+
+# drop the first row
+ticker_dfs_with_percentages = Enum.map(ticker_dfs_with_percentages, fn df -> DF.drop_nil(df) end)
+```
