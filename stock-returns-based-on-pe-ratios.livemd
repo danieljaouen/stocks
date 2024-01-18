@@ -242,3 +242,7 @@ params =
   |> Axon.Loop.metric(:mean_absolute_error, "MAE")
   |> Axon.Loop.run(Stream.zip(batched_x_train, batched_y_train), %{}, epochs: 25, compiler: EXLA)
 ```
+
+```elixir
+Axon.predict(model, params, first_item_x_test)
+```
