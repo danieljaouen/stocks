@@ -169,10 +169,8 @@ test_num = String.to_integer(Kino.Input.read(test_num_text))
 
 train_test_split_fun = fn x_tensors, y_tensors ->
   train_length = elem(Nx.shape(x_tensors), 0) - test_num
-
-  if train_length < 0 do
-    IO.puts(Nx.shape(x_tensors))
-  end
+  x_tensors = Nx.as_type(x_tensors, :f32)
+  y_tensors = Nx.as_type(y_tensors, :f32)
 
   [x_train, y_train] = [
     Nx.slice(x_tensors, [0, 0, 0], [train_length, prediction_days, 3]),
