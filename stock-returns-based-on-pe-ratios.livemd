@@ -171,8 +171,8 @@ train_test_split_fun = fn x_tensors, y_tensors ->
   train_length = elem(Nx.shape(x_tensors), 0) - test_num
 
   # I am not sure if the following is correct:
-  x_tensors = Nx.as_type(x_tensors, :f32)
-  y_tensors = Nx.as_type(y_tensors, :f32)
+  # x_tensors = Nx.as_type(x_tensors, :f32)
+  # y_tensors = Nx.as_type(y_tensors, :f32)
   # ------------------------------------------
 
   [x_train, y_train] = [
@@ -185,7 +185,16 @@ train_test_split_fun = fn x_tensors, y_tensors ->
     Nx.slice(y_tensors, [train_length], [test_num])
   ]
 
-  [[x_train, y_train], [x_test, y_test]]
+  [
+    [
+      Nx.as_type(x_train, :f32),
+      Nx.as_type(y_train, :f32)
+    ],
+    [
+      Nx.as_type(x_test, :f32),
+      Nx.as_type(y_test, :f32)
+    ]
+  ]
 end
 
 train_test_split =
@@ -244,6 +253,10 @@ params =
   |> Axon.Loop.trainer(:mean_squared_error, :adam)
   |> Axon.Loop.metric(:mean_absolute_error, "MAE")
   |> Axon.Loop.run(Stream.zip(batched_x_train, batched_y_train), %{}, epochs: 25, compiler: EXLA)
+```
+
+```elixir
+IO.puts(ticker)
 ```
 
 ```elixir
